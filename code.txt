@@ -1,0 +1,125 @@
+Sub Insert_Objects()
+'
+' Insert_Objects Macro
+'
+' Keyboard Shortcut: Ctrl+Shift+O
+'
+    Dim objFSO As Object
+    Dim objFolder As Object
+    Dim objFile As Object
+    Dim ws As Worksheet
+    Dim CurrentFile As String
+    
+    sItem = Application.ActiveWorkbook.Path & "\files"
+    
+    Dim strFolderExists As String
+    strFolderExists = Dir(sItem, vbDirectory)
+    If strFolderExists = "" Then
+        MsgBox "Cannot find folder"
+        Exit Sub
+    End If
+    
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    Set ws = ThisWorkbook.ActiveSheet
+    Set objFolder = objFSO.GetFolder(sItem)
+    ActiveSheet.Range("I4").Select
+    
+    Do While Not IsEmpty(ActiveCell.Value)
+        
+        Dim req_fn As String
+        req_fn = ActiveCell.Value
+        
+        Dim found_f As Boolean
+        found_f = False
+        For Each objFile In objFolder.Files
+            CurrentFile = objFolder & "\" & objFile.Name
+            fn_get = Split(objFile.Name, ".")(0)
+            If Not StrComp(fn_get, req_fn, vbTextCompare) Then
+                found_f = True
+                Exit For
+            End If
+        Next
+        
+        ActiveCell.Offset(0, 1).Activate
+        
+        If Not found_f Then
+            GoTo next_field
+        End If
+        
+        Dim Sh As OLEObject
+        For Each Sh In ActiveSheet.OLEObjects
+            If Not Application.Intersect(Sh.TopLeftCell, Range(ActiveCell.Address)) Is Nothing Then
+                Sh.Delete
+            End If
+        Next Sh
+        
+        ActiveSheet.OLEObjects.Add(Filename:=CurrentFile, Link:=False, DisplayAsIcon:=False).Select
+        
+        Dim Shp As Shape
+        For Each Shp In ActiveSheet.Shapes
+            If inDebug Then MsgBox Shp.Name
+            If isInBetween(ActiveCell.Left - 1, ActiveCell.Left + ActiveCell.Width, Shp.Left) And _
+               isInBetween(ActiveCell.Top - 1, ActiveCell.Top + ActiveCell.Height, Shp.Top) _
+               Then
+                    Shp.Left = ActiveCell.Left + ((ActiveCell.Width - Shp.Width) / 2)
+                    Shp.Top = ActiveCell.Top + ((ActiveCell.Height - Shp.Height) / 2)
+            End If
+        Next Shp
+        
+        For Each Sh In ActiveSheet.OLEObjects
+            If Not Application.Intersect(Sh.TopLeftCell, Range(ActiveCell.Address)) Is Nothing Then
+                Sh.Interior.Color = xlNone
+                Sh.Border.LineStyle = xlLineStyleNone
+            End If
+        Next Sh
+        
+next_field:
+        ActiveCell.Offset(1, -1).Activate
+    Loop
+    
+    Set objFolder = Nothing
+    Set objFile = Nothing
+    Set objFSO = Nothing
+        
+End Sub
+
+Function isInBetween(lowVal As Long, _
+                    hiVal As Long, targetVal As Long, _
+                    Optional Inclusive As Boolean = True) As Boolean
+ 
+ 
+'Return TRUE if the targetVal is between the lowVal and hiVal (Inclusive optional)
+ 
+ 
+    isInBetween = False
+    
+    If Inclusive Then
+    
+        Select Case targetVal
+            Case Is < lowVal
+            Case Is > hiVal
+            Case Else
+                isInBetween = True
+        End Select
+        
+        If inDebug Then MsgBox "Testing if " & lowVal & " <= " & targetVal & " <= " & hiVal _
+        & vbCrLf & vbCrLf & "Result = " & isInBetween
+        
+    Else
+        
+        Select Case targetVal
+            Case Is <= lowVal
+            Case Is >= hiVal
+            Case Else
+                isInBetween = True
+        End Select
+    
+        If inDebug Then MsgBox "Testing if " & lowVal & " < " & targetVal & " < " & hiVal _
+        & vbCrLf & vbCrLf & "Result = " & isInBetween
+        
+    End If
+ 
+ 
+End Function
+
+
